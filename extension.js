@@ -1,9 +1,11 @@
-const GObject = imports.gi.GObject;
-const St = imports.gi.St;
-const Main = imports.ui.main;
-const Meta = imports.gi.Meta;
-const Shell = imports.gi.Shell;
-const GLib = imports.gi.GLib;
+import GObject from 'gi://GObject';
+import St from 'gi://St';
+import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 /*
   This extension is based on the All Windows + Save/Restore Window Positions GNOME Shell extension (https://github.com/jkavery/all-windows) by jkavery.
@@ -43,7 +45,7 @@ class WindowState {
         this._title = window.get_title();
         this._log = log;
         if (log >= LOG_INFO)
-            global.log(`${EXTENSION_LOG_NAME} Save ${this}`);
+            console.debug(`${EXTENSION_LOG_NAME} Save ${this}`);
     }
 
     toString() {
@@ -96,22 +98,22 @@ class WindowState {
         if (this._log >= LOG_ERROR) {
             let hasDiffs = false;
             if (window.minimized !== this._minimized) {
-                global.log(`${EXTENSION_LOG_NAME} Error: Wrong minimized: ${window.minimized()}, title:${this._title}`);
+                console.debug(`${EXTENSION_LOG_NAME} Error: Wrong minimized: ${window.minimized()}, title:${this._title}`);
                 hasDiffs = true;
             }
             if (window.get_maximized() !== this._maximized) {
-                global.log(`${EXTENSION_LOG_NAME} Error: Wrong maximized: ${window.get_maximized()}, title:${this._title}`);
+                console.debug(`${EXTENSION_LOG_NAME} Error: Wrong maximized: ${window.get_maximized()}, title:${this._title}`);
                 hasDiffs = true;
             }
             // This test fails when there is a difference between saved and current maximization, though the window
             // behaviour is correct.  Due to an asynchronous update?
             if (this._log >= LOG_EVERYTHING && !this._equalRect(window)) {
                 const r = window.get_frame_rect();
-                global.log(`${EXTENSION_LOG_NAME} Error: Wrong rectangle: x:${r.x}, y:${r.y}, w:${r.width}, h:${r.height}, title:${this._title}`);
+                console.debug(`${EXTENSION_LOG_NAME} Error: Wrong rectangle: x:${r.x}, y:${r.y}, w:${r.width}, h:${r.height}, title:${this._title}`);
                 hasDiffs = true;
             }
             if (hasDiffs)
-                global.log(`${EXTENSION_LOG_NAME} Expecting: ${this}`);
+                console.debug(`${EXTENSION_LOG_NAME} Expecting: ${this}`);
         }
     }
 }
@@ -132,7 +134,7 @@ class AllWindowsStates {
             displaySize__windowId__state.set(displaySizeKey, new Map());
         const windowId__state = displaySize__windowId__state.get(displaySizeKey);
         if (this._log >= LOG_DEBUG)
-            global.log(`${EXTENSION_LOG_NAME} ${why} map size: ${windowId__state.size}  display size: ${size}  start time: ${START_TIME}`);
+            console.debug(`${EXTENSION_LOG_NAME} ${why} map size: ${windowId__state.size}  display size: ${size}  start time: ${START_TIME}`);
         return windowId__state;
     }
 
@@ -149,7 +151,7 @@ class AllWindowsStates {
             if (windowId__state.has(window.get_id()))
                 windowId__state.get(window.get_id()).restore(window);
             else if (this._log >= LOG_DEBUG)
-                global.log(`${EXTENSION_LOG_NAME} ${why} did not find: ${window.get_id()} ${window.get_title()}`);
+                console.debug(`${EXTENSION_LOG_NAME} ${why} did not find: ${window.get_id()} ${window.get_title()}`);
         }
     }
 }
@@ -167,31 +169,30 @@ function ellipsizeString(s, l) {
 function ellipsizedWindowTitle(w) {
     return ellipsizeString(w.get_title() || '<no title>', 100);
 }
+export default class WindowStateManager extends Extension {
 
-function init() {
-}
-
-function _refreshState() {
-    const size = JSON.stringify(global.display.get_size());
-    if (size != _lastSavedSize) {
-        global.log(`${EXTENSION_LOG_NAME} Screen size changed (old: ${_lastSavedSize}, new: ${size}). Restoring saved layout...`)
-        _allWindowsStates.restoreWindowPositions("AutoRestore");
-    } else {
-        _allWindowsStates.saveWindowPositions("AutoSave");
+    _refreshState() {
+        const size = JSON.stringify(global.display.get_size());
+        if (size != _lastSavedSize) {
+            console.debug(`${EXTENSION_LOG_NAME} Screen size changed (old: ${_lastSavedSize}, new: ${size}). Restoring saved layout...`)
+            _allWindowsStates.restoreWindowPositions("AutoRestore");
+        } else {
+            _allWindowsStates.saveWindowPositions("AutoSave");
+        }
+        _lastSavedSize = size;
     }
-    _lastSavedSize = size;
-}
 
-function enable() {
-    _allWindowsStates = new AllWindowsStates(LOG_LEVEL);
-    _interval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
-        _refreshState();
-        return GLib.SOURCE_CONTINUE;
-    });
-}
+    enable() {
+        _allWindowsStates = new AllWindowsStates(LOG_LEVEL);
+        _interval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
+            this._refreshState();
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
 
-function disable() {
-    _allWindowsStates = null;
-    if (_interval)
-        GLib.source_remove(_interval);
+    disable() {
+        _allWindowsStates = null;
+        if (_interval)
+            GLib.source_remove(_interval);
+    }
 }

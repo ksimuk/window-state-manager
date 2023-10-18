@@ -1,8 +1,8 @@
 #!/bin/sh
 
 BASEDIR=.local/share/gnome-shell/extensions
-DIR=window-state-manager@kishorv06.github.io
-URL=https://github.com/kishorv06/window-state-manager.git
+DIR=window-state-manager@kraev.cc
+URL=https://github.com/ksimuk/window-state-manager.git
 
 which git 2> /dev/null > /dev/null || ( echo Could not find Git ; exit 1 )
 which gnome-shell 2> /dev/null > /dev/null || ( echo Could not find GNOME Shell ; exit 1 )
@@ -10,7 +10,7 @@ which gnome-shell 2> /dev/null > /dev/null || ( echo Could not find GNOME Shell 
 GSVERSION=$(gnome-shell --version | awk '{ print $3; }')
 
 case $GSVERSION in
-42|42.*)
+45.*)
 	echo "Version ${GSVERSION} is supported."
 	;;
 *)
